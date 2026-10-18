@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Live Cam · Real-Time Detection | YOLO11m Underwater Detection</title>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap + Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary: #0F4C5C;
+            --primary-dark: #083C48;
+            --secondary: #E88D4F;
+            --card-bg: rgba(255, 255, 245, 0.94);
+            --dark-text: #173e4b;
+            --glass-border: rgba(255,255,255,0.25);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            color: #F0F9FC;
+            min-height: 100vh;
+            margin: 0;
+            position: relative;
+        }
+        
+        /* Underwater background */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('https://images.pexels.com/photos/1120661/underwater-corals-reef-fish-1120661.jpeg?auto=compress&cs=tinysrgb&w=1600&h=900&fit=crop');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            filter: brightness(0.5) blur(3px);
+            z-index: -2;
+        }
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(15,76,92,0.85) 0%, rgba(232,141,79,0.75) 100%);
+            z-index: -1;
+        }
+
+        /* Navbar */
+        .navbar {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.18);
+        }
+        .navbar-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .navbar-brand {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 1.65rem;
+            color: white !important;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+        }
+        .navbar-brand i {
+            color: #FFC49B;
+            margin-right: 10px;
+            font-size: 1.9rem;
+        }
+        .nav-buttons {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+        .nav-link-custom {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 8px 18px;
+            border-radius: 40px;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .nav-link-custom:hover, .nav-link-custom.active {
+            background: rgba(255,255,255,0.25);
+        }
+        .btn-logout-nav {
+            background: white;
+            border: 1.5px solid white;
+            color: var(--primary);
+            font-weight: 700;
+            padding: 8px 24px;
+            border-radius: 40px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+        .btn-logout-nav:hover {
+            background: transparent;
+            color: white;
+        }
+
+        /* Page Header */
+        .page-header {
+            background: rgba(15, 76, 92, 0.55);
+            backdrop-filter: blur(16px);
+            border-radius: 32px;
+            padding: 32px 36px;
+            margin: 40px 0 30px;
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+        }
+
+        /* Main Card */
+        .prediction-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(8px);
+            border-radius: 36px;
+            padding: 45px;
+            border: 1px solid rgba(255,255,255,0.4);
+            margin-bottom: 30px;
+            color: var(--dark-text);
+        }
+        .section-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 30px;
+            position: relative;
+            padding-bottom: 15px;
+        }
+        .section-title::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 80px;
+            height: 4px;
+            background: var(--secondary);
+            border-radius: 2px;
+        }
+
+        /* Tabs for Image/Live */
+        .mode-tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 28px;
+            border-bottom: 2px solid rgba(15,76,92,0.2);
+            padding-bottom: 8px;
+        }
+        .mode-tab {
+            background: transparent;
+            border: none;
+            font-weight: 600;
+            padding: 8px 24px;
+            border-radius: 40px;
+            transition: 0.2s;
+            color: var(--primary);
+            cursor: pointer;
+        }
+        .mode-tab.active {
+            background: var(--secondary);
+            color: #0F2F38;
+        }
+        .mode-tab i {
+            margin-right: 8px;
+        }
+
+        /* Upload Area */
+        .upload-area {
+            border: 3px dashed var(--secondary);
+            border-radius: 28px;
+            padding: 40px;
+            text-align: center;
+            background: rgba(255,255,255,0.6);
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .upload-area:hover {
+            background: rgba(255,255,255,0.9);
+            border-color: var(--primary);
+        }
+        .upload-area i {
+            font-size: 4rem;
+            color: var(--secondary);
+            margin-bottom: 15px;
+        }
+        .preview-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .result-image {
+            max-width: 100%;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .btn-primary-custom {
+            background: var(--secondary);
+            color: #0F2F38;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 40px;
+            font-weight: 700;
+            transition: 0.2s;
+        }
+        .btn-primary-custom:hover {
+            background: #f39c6d;
+            transform: translateY(-2px);
+        }
+        .btn-secondary-custom {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 26px;
+            border-radius: 40px;
+            font-weight: 600;
+        }
+        .btn-danger-custom {
+            background: #C75C5C;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-weight: 600;
+        }
+
+        /* Detection Table */
+        .detection-table {
+            background: white;
+            border-radius: 24px;
+            overflow: hidden;
+            margin-top: 25px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .detection-table th {
+            background: var(--primary);
+            color: white;
+            padding: 12px;
+            position: sticky;
+            top: 0;
+        }
+        .detection-table td {
+            padding: 10px;
+            color: #2C5A68;
+        }
+        .confidence-badge {
+            background: rgba(232,141,79,0.2);
+            padding: 4px 12px;
+            border-radius: 40px;
+            font-weight: 600;
+        }
+        .spinner-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(6px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        .spinner-container {
+            background: white;
+            padding: 30px;
+            border-radius: 30px;
+            text-align: center;
+            color: var(--primary);
+        }
+        .footer {
+            background: rgba(15,76,92,0.78);
+            backdrop-filter: blur(12px);
+            color: #FFEDE0;
+            padding: 28px 0;
+            text-align: center;
+            margin-top: 60px;
+        }
+        .cam-container {
+            background: rgba(0,0,0,0.2);
+            border-radius: 24px;
+            padding: 15px;
+            text-align: center;
+        }
+        #liveVideo {
+            width: 100%;
+            max-height: 380px;
+            border-radius: 20px;
+            background: #1a2f36;
+            transform: scaleX(-1);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+        .frame-stats {
+            font-size: 0.9rem;
+            background: rgba(15,76,92,0.8);
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 40px;
+            color: white;
+        }
+        .detection-overlay {
+            position: relative;
+        }
+        .live-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(232,141,79,0.9);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            z-index: 10;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .detecting {
+            animation: pulse 1s infinite;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Spinner -->
+    <div class="spinner-overlay" id="spinner">
+        <div class="spinner-container">
+            <div class="spinner-border text-primary mb-3" role="status"></div>
+            <h5>Running YOLO11m inference...</h5>
+            <p>Joint enhancement + detection in progress</p>
+        </div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-container">
+                <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                    <i class="fas fa-fish"></i> DeepUnderwater · YOLO11m
+                </a>
+                <div class="nav-buttons">
+                    <a href="{{ url_for('dashboard') }}" class="nav-link-custom"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                    <a href="{{ url_for('about') }}" class="nav-link-custom"><i class="fas fa-info-circle"></i> About</a>
+                    <a href="{{ url_for('models') }}" class="nav-link-custom"><i class="fas fa-chart-line"></i> Model Comparison</a>
+                    <a href="{{ url_for('prediction_page') }}" class="nav-link-custom active"><i class="fas fa-robot"></i> Predictions</a>
+                    <a href="{{ url_for('video_analysis_page') }}" class="nav-link-custom"><i class="fas fa-film"></i> Video</a>
+                    <a href="{{ url_for('history') }}" class="nav-link-custom"><i class="fas fa-clock-rotate-left"></i> History</a>
+                    <a href="{{ url_for('reports') }}" class="nav-link-custom"><i class="fas fa-file-lines"></i> Reports</a>
+                    <a href="{{ url_for('profile') }}" class="nav-link-custom"><i class="fas fa-user"></i> Profile</a>
+                    {% if session.get('role') == 'admin' %}<a href="{{ url_for('admin_dashboard') }}" class="nav-link-custom"><i class="fas fa-user-shield"></i> Admin</a>{% endif %}
+                    <form method="post" action="{{ url_for('logout') }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn-logout-nav border-0"><i class="fas fa-sign-out-alt"></i> Logout</button></form>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="page-header">
+            <h1><i class="fas fa-fish me-3"></i>Real‑Time Underwater Detection</h1>
+            <p class="mb-0">Upload image OR use Live Camera — Automatic real-time detection with YOLO11m</p>
+        </div>
+
+        <div class="prediction-card">
+            <!-- TABS: Image Upload vs Live Camera -->
+            <div class="mode-tabs">
+                <button class="mode-tab active" id="tabImageBtn"><i class="fas fa-image"></i> Upload Image</button>
+                <button class="mode-tab" id="tabLiveBtn"><i class="fas fa-video"></i> Live Camera (Auto-Detect)</button>
+            </div>
+
+            <!-- ==================== IMAGE UPLOAD PANEL ==================== -->
+            <div id="imagePanel">
+                <div class="row">
+                    <div class="col-lg-5">
+                        <h2 class="section-title">Upload Image</h2>
+                        <form id="uploadForm" enctype="multipart/form-data">
+                            <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p class="fw-bold">Click or drag & drop</p>
+                                <p class="small">JPG, PNG · Max 16MB</p>
+                                <input type="file" id="fileInput" name="file" accept="image/*" style="display: none;">
+                            </div>
+                            <div class="preview-container" id="previewContainer" style="display: none;">
+                                <img id="preview" class="preview-image" alt="Preview">
+                                <div class="mt-3">
+                                    <button type="button" class="btn btn-secondary-custom me-2" onclick="resetUpload()">Change</button>
+                                    <button type="submit" class="btn btn-primary-custom">Analyze</button>
+                                </div>
+                            </div>
+                        </form>
+                        <button type="button" class="btn btn-secondary-custom mt-2" id="visualCheckButton"><i class="fas fa-droplet"></i> Visual water/image condition</button>
+                        <div id="visualCheckResult" class="small mt-2" role="status"></div>
+                        <div class="mt-3 small text-muted">
+                            <i class="fas fa-chart-line"></i> Detector: {{ model_file }} · Active classes: {{ supported_classes|join(', ') }}
+                        </div>
+                    </div>
+                    <div class="col-lg-7">
+                        <h2 class="section-title">Detection Results</h2>
+                        <div id="resultsSection" style="display: none;">
+                            <div class="text-center mb-3">
+                                <img id="resultImage" class="result-image" alt="Annotated">
+                            </div>
+                            <div class="detection-table">
+                                <table class="table table-bordered mb-0">
+                                    <thead><tr><th>#</th><th>Class</th><th>Confidence</th><th>Bounding Box</th></tr></thead>
+                                    <tbody id="detectionsBody"></tbody>
+                                </table>
+                            </div>
+                            <div class="text-center mt-4">
+                                <button class="btn btn-secondary-custom" onclick="downloadResult()"><i class="fas fa-download"></i> Download Result</button>
+                            </div>
+                        </div>
+                        <div id="noResultsPlaceholder" class="text-center py-5">
+                            <i class="fas fa-water fa-4x text-muted mb-3"></i>
+                            <p>No image analyzed yet. Upload an underwater image to see detections.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== LIVE CAMERA PANEL (Auto Detection) ==================== -->
+            <div id="livePanel" style="display: none;">
+                <div class="row">
+                    <div class="col-lg-6">
+                        <h2 class="section-title">Live Stream</h2>
+                        <div class="cam-container">
+                            <div class="detection-overlay">
+                                <video id="liveVideo" autoplay playsinline muted></video>
+                                <div id="detectionStatus" class="live-badge" style="display: none;">
+                                    <i class="fas fa-sync-alt fa-spin"></i> Detecting...
+                                </div>
+                            </div>
+                            <div class="mt-3 d-flex justify-content-center gap-3">
+                                <button id="startCamBtn" class="btn btn-primary-custom"><i class="fas fa-play"></i> Start Camera & Auto-Detect</button>
+                                <button id="stopCamBtn" class="btn btn-danger-custom" disabled><i class="fas fa-stop"></i> Stop Camera</button>
+                            </div>
+                            <div class="mt-2">
+                                <span class="frame-stats" id="fpsCounter"><i class="fas fa-chart-line"></i> Detection Ready</span>
+                            </div>
+                            <div class="mt-2 small text-muted">
+                                <i class="fas fa-info-circle"></i> Camera detects automatically every 500ms. Real-time YOLO inference.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <h2 class="section-title">Live Detection Results</h2>
+                        <div id="liveResultsSection" style="display: none;">
+                            <div class="text-center mb-3 position-relative">
+                                <img id="liveResultImage" class="result-image" alt="Live Detection">
+                                <div id="liveTimestamp" class="live-badge" style="background: rgba(15,76,92,0.9);"></div>
+                            </div>
+                            <div class="detection-table">
+                                <table class="table table-bordered mb-0">
+                                    <thead><tr><th>#</th><th>Class</th><th>Confidence</th><th>Bounding Box</th></tr></thead>
+                                    <tbody id="liveDetectionsBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div id="liveNoResultPlaceholder" class="text-center py-5">
+                            <i class="fas fa-video-slash fa-4x text-muted mb-3"></i>
+                            <p>Start camera to begin automatic real-time detection.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p><i class="fas fa-chart-line me-2"></i> Detection-Guided Deep Unfolding · YOLO11m + Cross‑Scale Attention | Joint Enhancement & Detection</p>
+            <p class="small mb-0">mAP@0.5: 0.7667 | Precision: 0.8218 | Real-time automatic detection</p>
+        </div>
+    </footer>
+
+    <script>
+        // -------------------- DOM Elements --------------------
+        const tabImageBtn = document.getElementById('tabImageBtn');
+        const tabLiveBtn = document.getElementById('tabLiveBtn');
+        const imagePanel = document.getElementById('imagePanel');
+        const livePanel = document.getElementById('livePanel');
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewContainer = document.getElementById('previewContainer');
+        const preview = document.getElementById('preview');
+        const spinner = document.getElementById('spinner');
+        const resultsSection = document.getElementById('resultsSection');
+        const noResultsPlaceholder = document.getElementById('noResultsPlaceholder');
+
+        // Live cam elements
+        const liveVideo = document.getElementById('liveVideo');
+        const startCamBtn = document.getElementById('startCamBtn');
+        const stopCamBtn = document.getElementById('stopCamBtn');
+        const detectionStatus = document.getElementById('detectionStatus');
+        const fpsCounter = document.getElementById('fpsCounter');
+        const liveResultsSection = document.getElementById('liveResultsSection');
+        const liveNoResultPlaceholder = document.getElementById('liveNoResultPlaceholder');
+        const liveResultImage = document.getElementById('liveResultImage');
+        const liveDetectionsBody = document.getElementById('liveDetectionsBody');
+        const liveTimestamp = document.getElementById('liveTimestamp');
+
+        let mediaStream = null;
+        let detectionInterval = null;
+        let isDetecting = false;
+        let frameCount = 0;
+        let lastDetectionTime = 0;
+        
+        // Configuration
+        const DETECTION_INTERVAL_MS = 500; // Detect every 500ms for smooth real-time
+        
+        // Canvas for capturing frames
+        const captureCanvas = document.createElement('canvas');
+        const ctx = captureCanvas.getContext('2d');
+
+        // -------------------- Tab Switching --------------------
+        tabImageBtn.addEventListener('click', () => {
+            tabImageBtn.classList.add('active');
+            tabLiveBtn.classList.remove('active');
+            imagePanel.style.display = 'block';
+            livePanel.style.display = 'none';
+            stopCameraAndDetection();
+        });
+
+        tabLiveBtn.addEventListener('click', () => {
+            tabLiveBtn.classList.add('active');
+            tabImageBtn.classList.remove('active');
+            imagePanel.style.display = 'none';
+            livePanel.style.display = 'block';
+        });
+
+        // ==================== IMAGE UPLOAD LOGIC ====================
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    preview.src = ev.target.result;
+                    uploadArea.style.display = 'none';
+                    previewContainer.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        uploadArea.addEventListener('dragover', (e) => e.preventDefault());
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                fileInput.files = e.dataTransfer.files;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    preview.src = ev.target.result;
+                    uploadArea.style.display = 'none';
+                    previewContainer.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (!fileInput.files[0]) {
+                alert('Please select an image first');
+                return;
+            }
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            spinner.style.display = 'flex';
+
+            try {
+                const response = await fetch('/prediction', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content},
+                    body: formData
+                });
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Server error (${response.status})`);
+                }
+                const data = await response.json();
+                spinner.style.display = 'none';
+                if (data.success) {
+                    displayResults(data);
+                } else {
+                    alert('Detection failed: ' + data.error);
+                }
+            } catch (err) {
+                spinner.style.display = 'none';
+                console.error('Fetch error:', err);
+                alert('Could not connect to server.\n' + err.message);
+            }
+        });
+
+        document.getElementById('visualCheckButton').addEventListener('click', async function() {
+            const file = fileInput.files[0];
+            const target = document.getElementById('visualCheckResult');
+            if (!file) { target.textContent = 'Choose an image first.'; return; }
+            const body = new FormData();
+            body.append('file', file);
+            target.textContent = 'Assessing image brightness, contrast, and color…';
+            try {
+                const response = await fetch('{{ url_for("visual_assessment") }}', {method: 'POST', headers: {'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content}, body, credentials: 'same-origin'});
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.error || 'Assessment failed.');
+                target.textContent = `${data.lighting}; ${data.contrast_assessment}. This is a visual image-quality estimate, not a water-quality measurement.`;
+            } catch (error) { target.textContent = error.message; }
+        });
+
+        function displayResults(data) {
+            noResultsPlaceholder.style.display = 'none';
+            resultsSection.style.display = 'block';
+            document.getElementById('resultImage').src = data.annotated_image + '?t=' + Date.now();
+
+            const tbody = document.getElementById('detectionsBody');
+            tbody.innerHTML = '';
+            if (data.detections.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center">No objects detected</td></tr>';
+            } else {
+                data.detections.forEach((det, idx) => {
+                    const row = tbody.insertRow();
+                    row.insertCell(0).textContent = idx + 1;
+                    row.insertCell(1).textContent = det.class_name;
+                    row.insertCell(2).innerHTML = `<span class="confidence-badge">${(det.confidence * 100).toFixed(1)}%</span>`;
+                    row.insertCell(3).textContent = det.bbox.map(v => v.toFixed(1)).join(', ');
+                });
+            }
+            window.currentResult = data;
+        }
+
+        function resetUpload() {
+            fileInput.value = '';
+            uploadArea.style.display = 'block';
+            previewContainer.style.display = 'none';
+            resultsSection.style.display = 'none';
+            noResultsPlaceholder.style.display = 'block';
+            window.currentResult = null;
+        }
+
+        function downloadResult() {
+            if (window.currentResult && window.currentResult.annotated_image) {
+                const a = document.createElement('a');
+                a.href = window.currentResult.annotated_image;
+                a.download = 'yolo_detection.jpg';
+                a.click();
+            } else {
+                alert('No result to download');
+            }
+        }
+
+        // ==================== LIVE CAMERA WITH AUTO DETECTION ====================
+        async function startCamera() {
+            try {
+                if (mediaStream) {
+                    stopCameraAndDetection();
+                }
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        frameRate: { ideal: 30 }
+                    } 
+                });
+                mediaStream = stream;
+                liveVideo.srcObject = stream;
+                
+                // Wait for video to be ready
+                await new Promise((resolve) => {
+                    liveVideo.onloadedmetadata = () => {
+                        captureCanvas.width = liveVideo.videoWidth;
+                        captureCanvas.height = liveVideo.videoHeight;
+                        resolve();
+                    };
+                });
+                
+                startCamBtn.disabled = true;
+                stopCamBtn.disabled = false;
+                detectionStatus.style.display = 'block';
+                
+                // Start automatic detection
+                startAutoDetection();
+                
+                fpsCounter.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Auto-detecting every 0.5s';
+                
+            } catch (err) {
+                console.error("Camera error:", err);
+                alert("Could not access camera. Please allow permissions.");
+            }
+        }
+        
+        function startAutoDetection() {
+            if (detectionInterval) {
+                clearInterval(detectionInterval);
+            }
+            
+            // Run detection immediately
+            setTimeout(() => captureAndDetect(), 100);
+            
+            // Set up interval for continuous detection
+            detectionInterval = setInterval(() => {
+                if (!isDetecting && mediaStream && liveVideo.readyState === 4) {
+                    captureAndDetect();
+                }
+            }, DETECTION_INTERVAL_MS);
+        }
+        
+        async function captureAndDetect() {
+            if (!liveVideo.videoWidth || !liveVideo.videoHeight) {
+                return;
+            }
+            
+            isDetecting = true;
+            
+            // Capture current frame
+            captureCanvas.width = liveVideo.videoWidth;
+            captureCanvas.height = liveVideo.videoHeight;
+            ctx.drawImage(liveVideo, 0, 0, captureCanvas.width, captureCanvas.height);
+            
+            // Convert canvas to blob
+            captureCanvas.toBlob(async (blob) => {
+                if (!blob) {
+                    isDetecting = false;
+                    return;
+                }
+                
+                const formData = new FormData();
+                formData.append('file', blob, 'live_frame.jpg');
+                
+                try {
+                    const startTime = Date.now();
+                    const response = await fetch('/prediction', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content},
+                        body: formData
+                    });
+                    
+                    const detectionTime = Date.now() - startTime;
+                    
+                    if (!response.ok) throw new Error(`Server error ${response.status}`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        displayLiveResults(data, detectionTime);
+                    }
+                    
+                } catch (err) {
+                    console.error("Detection error:", err);
+                } finally {
+                    isDetecting = false;
+                }
+            }, 'image/jpeg', 0.8);
+        }
+        
+        function displayLiveResults(data, detectionTime) {
+            liveNoResultPlaceholder.style.display = 'none';
+            liveResultsSection.style.display = 'block';
+            liveResultImage.src = data.annotated_image + '?t=' + Date.now();
+            
+            // Update timestamp
+            const now = new Date();
+            liveTimestamp.innerHTML = `<i class="fas fa-clock"></i> ${now.toLocaleTimeString()} (${detectionTime}ms)`;
+            
+            // Update detection table
+            liveDetectionsBody.innerHTML = '';
+            if (data.detections.length === 0) {
+                liveDetectionsBody.innerHTML = '<tr><td colspan="4" class="text-center">No objects detected</td></tr>';
+            } else {
+                data.detections.forEach((det, idx) => {
+                    const row = liveDetectionsBody.insertRow();
+                    row.insertCell(0).textContent = idx + 1;
+                    row.insertCell(1).textContent = det.class_name;
+                    row.insertCell(2).innerHTML = `<span class="confidence-badge">${(det.confidence * 100).toFixed(1)}%</span>`;
+                    row.insertCell(3).textContent = det.bbox.map(v => v.toFixed(1)).join(', ');
+                });
+            }
+            
+            // Update FPS counter with detection info
+            const totalDetections = data.detections.length;
+            fpsCounter.innerHTML = `<i class="fas fa-chart-line"></i> Last detection: ${detectionTime}ms | Objects: ${totalDetections}`;
+            
+            window.currentLiveResult = data;
+        }
+        
+        function stopCameraAndDetection() {
+            // Stop detection interval
+            if (detectionInterval) {
+                clearInterval(detectionInterval);
+                detectionInterval = null;
+            }
+            
+            // Stop camera stream
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+                liveVideo.srcObject = null;
+            }
+            
+            startCamBtn.disabled = false;
+            stopCamBtn.disabled = true;
+            detectionStatus.style.display = 'none';
+            isDetecting = false;
+            fpsCounter.innerHTML = '<i class="fas fa-chart-line"></i> Detection Ready';
+            
+            // Reset live UI
+            liveNoResultPlaceholder.style.display = 'block';
+            liveResultsSection.style.display = 'none';
+            liveDetectionsBody.innerHTML = '';
+        }
+        
+        // Attach live cam event listeners
+        startCamBtn.addEventListener('click', startCamera);
+        stopCamBtn.addEventListener('click', stopCameraAndDetection);
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (detectionInterval) {
+                clearInterval(detectionInterval);
+            }
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+            }
+        });
+    </script>
+</body>
+</html>

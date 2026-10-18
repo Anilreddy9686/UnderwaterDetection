@@ -1,0 +1,10 @@
+venv/
+*cache*/
+uploads/
+outputs/
+runs/
+best_model?CSEA.pt
+.env
+static/results/
+training_data/
+best_model_expanded.pt

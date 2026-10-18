@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Dashboard · Detection-Guided Deep Unfolding | Underwater Joint Enhancement & Detection</title>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap + Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary: #0F4C5C;        /* deep teal – underwater professionalism */
+            --primary-dark: #083C48;
+            --secondary: #E88D4F;       /* warm coral for attention/accent */
+            --light-bg: #F4F9FC;
+            --card-bg: rgba(255, 255, 245, 0.94);   /* crisp glass card background */
+            --dark-text: #173e4b;
+            --accent: #D45A4A;
+            --success: #2A9D8F;
+            --input-border: #BED7E0;
+            --glass-border: rgba(255,255,255,0.25);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            color: #F0F9FC;
+            min-height: 100vh;
+            margin: 0;
+            line-height: 1.5;
+            position: relative;
+        }
+        
+        /* Underwater Background Image with Overlay — identical to login page style (deep teal + coral gradient) */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('https://images.pexels.com/photos/1120661/underwater-corals-reef-fish-1120661.jpeg?auto=compress&cs=tinysrgb&w=1600&h=900&fit=crop');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            filter: brightness(0.5) blur(3px);
+            z-index: -2;
+        }
+        
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(15,76,92,0.85) 0%, rgba(232,141,79,0.75) 100%);
+            z-index: -1;
+        }
+
+        /* Navbar – glass teal/coral consistent with main project (identical style to login page) */
+        .navbar {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.18);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .navbar-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+        .navbar-brand {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 1.65rem;
+            color: white !important;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .navbar-brand i {
+            color: #FFC49B;
+            margin-right: 10px;
+            font-size: 1.9rem;
+        }
+        .nav-buttons {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+        .nav-link-custom {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 8px 18px;
+            border-radius: 40px;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: transparent;
+        }
+        .nav-link-custom i {
+            font-size: 1rem;
+        }
+        .nav-link-custom:hover, .nav-link-custom.active {
+            background: rgba(255,255,255,0.25);
+            backdrop-filter: blur(4px);
+        }
+        .btn-logout-nav {
+            background: white;
+            border: 1.5px solid white;
+            color: var(--primary);
+            font-weight: 700;
+            padding: 8px 24px;
+            border-radius: 40px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+        .btn-logout-nav:hover {
+            background: transparent;
+            color: white;
+            border-color: rgba(255,255,255,0.8);
+        }
+
+        /* Dashboard header — glass panel with white text */
+        .dashboard-header {
+            background: rgba(15, 76, 92, 0.55);
+            backdrop-filter: blur(16px);
+            border-radius: 32px;
+            padding: 32px 36px;
+            margin: 40px 0 40px;
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+        }
+        .dashboard-header h1 {
+            font-weight: 700;
+            font-size: 2.4rem;
+            letter-spacing: -0.3px;
+        }
+        .dashboard-header p {
+            font-size: 1.1rem;
+            opacity: 0.92;
+            margin-top: 12px;
+        }
+
+        /* Main card design — large clickable cards with image top + glass body (like second template but using underwater brand colors) */
+        .dashboard-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(2px);
+            border-radius: 36px;
+            border: 1px solid rgba(255,255,255,0.4);
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.4);
+            transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1), box-shadow 0.3s;
+            overflow: hidden;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 30px 55px -12px rgba(0,0,0,0.5);
+        }
+
+        .card-link {
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        /* card image section with dedicated underwater / detection themed backgrounds */
+        .card-image {
+            height: 220px;
+            background-size: cover;
+            background-position: center 30%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            border-bottom: 2px solid rgba(232,141,79,0.5);
+        }
+        .card-image::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.4) 100%);
+            z-index: 1;
+        }
+        .card-image i {
+            position: relative;
+            z-index: 3;
+            color: white;
+            text-shadow: 0 4px 14px rgba(0,0,0,0.6);
+            font-size: 5rem;
+            background: rgba(15,76,92,0.5);
+            padding: 22px;
+            border-radius: 60px;
+            backdrop-filter: blur(8px);
+            transition: 0.2s;
+        }
+        .dashboard-card:hover .card-image i {
+            transform: scale(1.02);
+            background: rgba(232,141,79,0.65);
+        }
+
+        /* Card content */
+        .card-content {
+            padding: 2rem 2rem 2rem 2rem;
+            background: var(--card-bg);
+            flex: 1;
+            border-bottom-left-radius: 36px;
+            border-bottom-right-radius: 36px;
+        }
+        .card-content h3 {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 0.75rem;
+            letter-spacing: -0.3px;
+        }
+        .card-content p {
+            font-size: 1rem;
+            line-height: 1.5;
+            color: #2C4E5C;
+            font-weight: 500;
+            margin-bottom: 1.6rem;
+        }
+        .card-arrow {
+            text-align: right;
+            font-weight: 700;
+            color: var(--secondary);
+            font-size: 1.1rem;
+        }
+        .card-arrow i {
+            background: rgba(232,141,79,0.15);
+            padding: 8px 18px;
+            border-radius: 50px;
+            transition: 0.2s;
+            margin-left: 8px;
+        }
+        .dashboard-card:hover .card-arrow i {
+            background: var(--secondary);
+            color: white;
+        }
+
+        /* Performance metrics panel (underwater SOTA stats) */
+        .metrics-panel {
+            background: rgba(255,255,255,0.82);
+            backdrop-filter: blur(12px);
+            border-radius: 28px;
+            padding: 20px 28px;
+            margin: 40px 0 20px;
+            border: 1px solid rgba(255,255,255,0.45);
+            transition: all 0.2s;
+        }
+        .metrics-panel .stat-badge {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .stat-item {
+            background: rgba(15,76,92,0.1);
+            padding: 6px 18px;
+            border-radius: 120px;
+            font-weight: 600;
+            color: var(--primary-dark);
+        }
+        .stat-item i {
+            color: var(--secondary);
+            margin-right: 8px;
+        }
+        .btn-outline-coral {
+            background: transparent;
+            border: 2px solid var(--secondary);
+            color: var(--primary);
+            font-weight: 700;
+            border-radius: 60px;
+            padding: 8px 28px;
+            transition: 0.2s;
+        }
+        .btn-outline-coral:hover {
+            background: var(--secondary);
+            color: white;
+            border-color: var(--secondary);
+        }
+
+        /* footer — exactly matching login page footer style */
+        .footer {
+            background: rgba(15,76,92,0.78);
+            backdrop-filter: blur(12px);
+            color: #FFEDE0;
+            padding: 28px 0;
+            text-align: center;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            margin-top: 70px;
+        }
+        .footer p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+        .footer small {
+            opacity: 0.85;
+        }
+
+        @media (max-width: 768px) {
+            .navbar-container {
+                flex-direction: column;
+                gap: 12px;
+            }
+            .dashboard-header h1 {
+                font-size: 1.8rem;
+            }
+            .card-content h3 {
+                font-size: 1.7rem;
+            }
+            .card-image {
+                height: 170px;
+            }
+            .dashboard-header {
+                padding: 24px 20px;
+            }
+            .stat-item {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar based on login template: teal glass, same brand identity, dashboard-specific links -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-container">
+                <a class="navbar-brand" href="/dashboard">
+                    <i class="fas fa-fish"></i> DeepUnderwater · YOLO11m
+                </a>
+                <div class="nav-buttons">
+                    <a href="/dashboard" class="nav-link-custom active"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                    <a href="/about" class="nav-link-custom "><i class="fas fa-info-circle"></i> About</a>
+                    <a href="/models" class="nav-link-custom"><i class="fas fa-chart-line"></i> Model Comparison</a>
+                    <a href="/prediction" class="nav-link-custom"><i class="fas fa-robot"></i> Predictions</a>
+                    <a href="{{ url_for('video_analysis_page') }}" class="nav-link-custom"><i class="fas fa-film"></i> Video</a>
+                    <a href="{{ url_for('history') }}" class="nav-link-custom"><i class="fas fa-clock-rotate-left"></i> History</a>
+                    <a href="{{ url_for('reports') }}" class="nav-link-custom"><i class="fas fa-file-lines"></i> Reports</a>
+                    <a href="{{ url_for('profile') }}" class="nav-link-custom"><i class="fas fa-user"></i> Profile</a>
+                    {% if session.get('role') == 'admin' %}<a href="{{ url_for('admin_dashboard') }}" class="nav-link-custom"><i class="fas fa-user-shield"></i> Admin</a>{% endif %}
+                    <form method="post" action="{{ url_for('logout') }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn-logout-nav border-0"><i class="fas fa-sign-out-alt"></i> Logout</button></form>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Dashboard Main Content -->
+    <div class="container">
+        <!-- Header Welcome with underwater research context -->
+        <div class="dashboard-header">
+            <div class="d-flex flex-wrap justify-content-between align-items-center">
+                <div>
+                    <h1><i class="fas fa-chalkboard-user me-3"></i>Research Dashboard</h1>
+                </div>
+                <div class="mt-3 mt-md-0">
+                    <span class="badge bg-light text-primary p-3 rounded-pill shadow-sm"><i class="fas fa-water me-1"></i> mAP@0.5: 0.7806 | Precision: 0.8124</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Two Core Cards: Model Comparison + Predictions (identical clickable architecture like second template, but aligned with underwater/teal-coral theme) -->
+        <div class="row g-5 justify-content-center">
+            <!-- Card 1: Model Comparison (architecture benchmark, deep unfolding variants) -->
+            <div class="col-md-6">
+                <div class="dashboard-card">
+                    <a href="/models" class="card-link">
+                        <div class="card-image" style="background-image: url('https://images.pexels.com/photos/7104891/underwater-robot-ai-technology-7104891.jpg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'); background-position: center 20%;">
+                            <i class="fas fa-chart-simple"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Model Comparison</h3>
+                            <p>Analyze deep unfolding architectures: YOLO11m variants, cross‑scale attention, fusion strategies for underwater image enhancement & detection — latency vs mAP tradeoffs.</p>
+                            <div class="card-arrow">
+                                <span>Explore benchmarks <i class="fas fa-arrow-right"></i></span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Card 2: Predictions (real-time inference on underwater sequences) -->
+            <div class="col-md-6">
+                <div class="dashboard-card">
+                    <a href="/prediction" class="card-link">
+                        <div class="card-image" style="background-image: url('https://images.pexels.com/photos/3775456/marine-life-underwater-object-detection.jpg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'); background-position: center 35%;">
+                            <i class="fas fa-eye"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Predictions</h3>
+                            <p>Run joint enhancement & detection in real-time: upload turbid underwater images, see enhanced output + bounding boxes for marine species and objects. Integrated YOLO11m inference engine.</p>
+                            <div class="card-arrow">
+                                <span>Launch Demo <i class="fas fa-arrow-right"></i></span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Extra underwater dataset context (teal-coral glass badge) just for completeness -->
+        <div class="text-center mt-4">
+            <span class="badge bg-dark bg-opacity-40 text-white p-3 rounded-pill" style="backdrop-filter: blur(8px);"><i class="fas fa-fish me-2 text-warning"></i> Joint Enhancement + Detection Pipeline · YOLO11m backbone · Cross‑Scale Attention · 30 epochs (converged)</span>
+        </div>
+    </div>
+
+    <!-- Footer – exactly matching original project footer with major SOTA metrics -->
+    <footer class="footer">
+        <div class="container">
+            <p><i class="fas fa-chart-line me-2"></i> Detection-Guided Deep Unfolding · Joint Underwater Image Enhancement & Object Detection | YOLO11m + Cross‑Scale Efficient Attention (SOTA)</p>
+            <p class="small mb-0 mt-2 opacity-75">mAP@0.5: 0.7806 | Precision: 0.8124 | Recall: 0.748 | 30 epochs · Benchmark on UIEB & test set · Research use only</p>
+            <div class="mt-2">
+                <i class="fas fa-water me-1"></i> <i class="fas fa-chart-simple me-1"></i> <i class="fas fa-microchip"></i>  — Real‑time underwater perception system
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS bundle for minor interactivity (alerts, tooltips) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Optional: adding fallback for background image just in case (based on login template script)
+        (function() {
+            const bgImg = new Image();
+            bgImg.src = 'https://images.pexels.com/photos/1120661/underwater-corals-reef-fish-1120661.jpeg?auto=compress&cs=tinysrgb&w=1600&h=900&fit=crop';
+            bgImg.onerror = function() {
+                // fallback background if needed but gradient overlay remains stable, no user disruption.
+                console.log("Using secondary underwater fallback (gradient only)");
+            };
+        })();
+
+        // simple active state simulation for navbar (just for demonstration)
+        document.querySelectorAll('.nav-link-dashboard').forEach(link => {
+            if(link.getAttribute('href') === '/dashboard' && link.classList) {
+                // already active; ensures consistency
+            }
+        });
+    </script>
+</body>
+</html>

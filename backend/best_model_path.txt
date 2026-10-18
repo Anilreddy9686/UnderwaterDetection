@@ -1,0 +1,1 @@
+/kaggle/working/runs/detect/urpc_yolo11_csea/full_m_cross_scale_efficient_attention_100pct/weights/best.pt

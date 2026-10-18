@@ -1,0 +1,274 @@
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_file
+import mysql.connector
+import os
+import traceback
+import uuid
+import base64
+from werkzeug.utils import secure_filename
+from ultralytics import YOLO
+import cv2
+import numpy as np
+from io import BytesIO
+from PIL import Image
+import time
+from threading import Lock
+
+app = Flask(__name__)
+app.secret_key = 'admin'
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max
+
+# ======================== DATABASE SETUP ========================
+mydb = None
+mycursor = None
+try:
+    mydb = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="",
+        port="3306",
+        database="under_water"
+    )
+    mycursor = mydb.cursor()
+    print("✅ Database connected")
+except mysql.connector.Error as e:
+    print(f"⚠️ DB connection failed: {e}. App will run without DB features.")
+
+def executionquery(query, values):
+    if mycursor is None:
+        return
+    try:
+        mycursor.execute(query, values)
+        mydb.commit()
+    except Exception as e:
+        print(f"DB error: {e}")
+        traceback.print_exc()
+
+def retrivequery1(query, values):
+    if mycursor is None:
+        return []
+    try:
+        mycursor.execute(query, values)
+        return mycursor.fetchall()
+    except Exception as e:
+        print(f"DB error: {e}")
+        return []
+
+# ======================== YOLO MODEL LOADING ========================
+MODEL_PATH = "best_model+CSEA.pt"   # update with your actual model path
+model = None
+model_lock = Lock()
+
+try:
+    model = YOLO(MODEL_PATH)
+    print(f"✅ Loaded YOLO model from {MODEL_PATH}")
+except Exception as e:
+    print(f"⚠️ Failed to load model: {e}. Please check model path.")
+    # For testing without model, create a dummy model
+    try:
+        from ultralytics import YOLO
+        model = YOLO('yolov8n.pt')  # fallback to default model
+        print("⚠️ Using default YOLOv8n model as fallback")
+    except:
+        print("❌ No model available")
+
+UPLOAD_FOLDER = "uploads"
+OUTPUT_FOLDER = "outputs"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+
+# Cache for recent predictions (to avoid reprocessing similar frames)
+prediction_cache = {}
+CACHE_SIZE = 10
+
+# ======================== ROUTES ========================
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        name = request.form['name']
+        email = request.form['email']
+        password = request.form['password']
+        c_password = request.form['c_password']
+
+        if password != c_password:
+            flash("Passwords do not match!", "danger")
+            return redirect(url_for('register'))
+
+        existing = retrivequery1("SELECT * FROM users WHERE email=%s", (email,))
+        if existing:
+            flash("Email already registered!", "warning")
+            return redirect(url_for('register'))
+
+        executionquery("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)", (name, email, password))
+        flash("Registration successful! Please login.", "success")
+        return redirect(url_for('login'))
+
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+        user = retrivequery1("SELECT * FROM users WHERE email=%s AND password=%s", (email, password))
+        if user:
+            session['user_id'] = user[0][0]
+            session['user_name'] = user[0][1]
+            flash("Login successful!", "success")
+            return redirect(url_for('dashboard'))
+        else:
+            flash("Invalid email or password!", "danger")
+            return redirect(url_for('login'))
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash("You have been logged out.", "info")
+    return redirect(url_for('login'))
+
+@app.route('/dashboard')
+def dashboard():
+    if 'user_id' not in session:
+        flash("Please login first!", "warning")
+        return redirect(url_for('login'))
+    return render_template('dashboard.html', user_name=session['user_name'])
+
+@app.route('/models')
+def models():
+    return render_template('models.html')
+
+@app.route('/prediction')
+def prediction_page():
+    if 'user_id' not in session:
+        flash("Please login first!", "warning")
+        return redirect(url_for('login'))
+    return render_template('prediction.html')
+
+# ======================== YOLO INFERENCE ENDPOINT (Optimized) ========================
+@app.route('/prediction', methods=['POST'])
+def predict():
+    if model is None:
+        return jsonify({'success': False, 'error': 'Model not loaded. Please check server.'}), 500
+        
+    # Check if file is present
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'No file uploaded'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'success': False, 'error': 'Empty filename'}), 400
+    
+    # Generate unique ID for this request
+    img_id = str(uuid.uuid4())
+    temp_path = os.path.join(UPLOAD_FOLDER, f"{img_id}.jpg")
+    file.save(temp_path)
+    
+    try:
+        # Read image
+        img = cv2.imread(temp_path)
+        if img is None:
+            return jsonify({'success': False, 'error': 'Invalid image file'}), 400
+        
+        # Run inference with YOLO (optimized for speed)
+        with model_lock:  # Ensure thread safety
+            results = model(temp_path, conf=0.25, iou=0.45, verbose=False)
+        
+        result = results[0]
+        
+        # Draw bounding boxes on image
+        annotated_img = img.copy()
+        detections = []
+        boxes = result.boxes
+        
+        if boxes is not None and len(boxes) > 0:
+            for box in boxes:
+                cls_id = int(box.cls.item())
+                conf = float(box.conf.item())
+                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                
+                # Get class name
+                class_name = model.names[cls_id] if hasattr(model, 'names') else f"Class_{cls_id}"
+                
+                # Draw rectangle
+                cv2.rectangle(annotated_img, (x1, y1), (x2, y2), (232, 141, 79), 2)
+                
+                # Draw label background
+                label = f"{class_name} {conf:.2f}"
+                label_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)[0]
+                cv2.rectangle(annotated_img, (x1, y1 - label_size[1] - 10), 
+                             (x1 + label_size[0], y1), (232, 141, 79), -1)
+                
+                # Draw label text
+                cv2.putText(annotated_img, label, (x1, y1 - 5), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+                
+                detections.append({
+                    'class_name': class_name,
+                    'confidence': conf,
+                    'bbox': [x1, y1, x2, y2]
+                })
+        
+        # Save annotated image
+        out_path = os.path.join(OUTPUT_FOLDER, f"{img_id}_annotated.jpg")
+        cv2.imwrite(out_path, annotated_img)
+        
+        # Clean up temp file
+        try:
+            os.remove(temp_path)
+        except:
+            pass
+        
+        # Update cache
+        if len(prediction_cache) >= CACHE_SIZE:
+            # Remove oldest entry
+            oldest_key = next(iter(prediction_cache))
+            del prediction_cache[oldest_key]
+        
+        return jsonify({
+            'success': True,
+            'annotated_image': f'/outputs/{img_id}_annotated.jpg',
+            'detections': detections,
+            'original_filename': file.filename,
+            'total_detections': len(detections)
+        })
+        
+    except Exception as e:
+        print(f"Prediction error: {traceback.format_exc()}")
+        # Clean up on error
+        try:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+        except:
+            pass
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/outputs/<filename>')
+def serve_output(filename):
+    """Serve annotated images"""
+    filepath = os.path.join(OUTPUT_FOLDER, filename)
+    if os.path.exists(filepath):
+        return send_file(filepath, mimetype='image/jpeg')
+    else:
+        return "File not found", 404
+
+# ======================== HEALTH CHECK ========================
+@app.route('/health')
+def health():
+    """Check if server is running and model is loaded"""
+    return jsonify({
+        'status': 'ok',
+        'model_loaded': model is not None,
+        'model_path': MODEL_PATH if model else None
+    })
+
+if __name__ == '__main__':
+    # Run with debug=False for better performance
+    app.run(debug=True, host='0.0.0.0', port=5000, threaded=True)

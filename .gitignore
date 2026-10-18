@@ -1,0 +1,55 @@
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+frontend/frontend/venv/
+frontend/frontend/.venv/
+frontend/frontend/env/
+
+# Secrets and environment configuration
+.env
+.env.*
+!.env.example
+
+# Local databases
+*.sqlite3
+*.db
+
+# Uploaded and generated files
+uploads/
+outputs/
+runs/
+predictions/
+training_data/
+frontend/frontend/outputs/
+frontend/frontend/runs/
+frontend/frontend/uploads/
+frontend/frontend/training_data/
+
+# Large datasets and model weights
+*.pt
+*.pth
+*.onnx
+*.engine
+*.zip
+
+# Extracted underwater dataset
+backend/URPC2020-2/
+
+# Nested Git metadata
+frontend/frontend/.git/
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+frontend/frontend/.git_backup/
+frontend/frontend/Ultralytics/
