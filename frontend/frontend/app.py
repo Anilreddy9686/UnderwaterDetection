@@ -44,15 +44,34 @@ INFERENCE_IOU = bounded_setting_from_value(os.environ.get('DETECTION_IOU', 0.45)
 mydb = None
 mycursor = None
 db_lock = Lock()
+
 try:
-    mydb = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="root",
-        port="3306",
-        database="under_water"
-    )
+    DB_HOST = os.environ.get("DB_HOST", "localhost")
+    DB_USER = os.environ.get("DB_USER", "root")
+    DB_PASSWORD = os.environ.get("DB_PASSWORD", "root")
+    DB_PORT = int(os.environ.get("DB_PORT", "3306"))
+    DB_NAME = os.environ.get("DB_NAME", "under_water")
+    DB_SSL_CA = os.environ.get("DB_SSL_CA", "").strip()
+
+    db_options = {
+        "host": DB_HOST,
+        "user": DB_USER,
+        "password": DB_PASSWORD,
+        "port": DB_PORT,
+        "database": DB_NAME,
+        "connection_timeout": 15,
+    }
+
+    if DB_SSL_CA:
+        db_options.update({
+            "ssl_ca": DB_SSL_CA,
+            "ssl_verify_cert": True,
+            "ssl_verify_identity": True,
+        })
+
+    mydb = mysql.connector.connect(**db_options)
     mycursor = mydb.cursor()
+
     print("✅ Database connected")
     try:
         schema_cursor = mydb.cursor()
